@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import CancellationFlow from '../components/CancellationFlow';
 
 // Mock user data for UI display
 const mockUser = {
@@ -14,7 +15,7 @@ const mockSubscriptionData = {
   isTrialSubscription: false,
   cancelAtPeriodEnd: false,
   currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-  monthlyPrice: 25,
+  monthlyPrice: 2500, // $25 in cents
   isUCStudent: false,
   hasManagedAccess: false,
   managedOrganization: null,
@@ -24,6 +25,7 @@ const mockSubscriptionData = {
 export default function ProfilePage() {
   const [loading] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [showCancellationFlow, setShowCancellationFlow] = useState(false);
   
   // New state for settings toggle
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
@@ -39,6 +41,14 @@ export default function ProfilePage() {
 
   const handleClose = () => {
     console.log('Navigate to jobs');
+  };
+
+  const handleCancelSubscription = () => {
+    setShowCancellationFlow(true);
+  };
+
+  const handleCloseCancellationFlow = () => {
+    setShowCancellationFlow(false);
   };
 
   if (loading) {
@@ -248,9 +258,7 @@ export default function ProfilePage() {
                       <span className="text-sm font-medium">View billing history</span>
                     </button>
                     <button
-                      onClick={() => {
-                        console.log('Cancel button clicked - no action');
-                      }}
+                      onClick={handleCancelSubscription}
                       className="inline-flex items-center justify-center w-full px-4 py-3 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 hover:border-red-300 transition-all duration-200 shadow-sm group"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -265,6 +273,15 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Cancellation Flow Modal */}
+      <CancellationFlow 
+        isOpen={showCancellationFlow}
+        onClose={handleCloseCancellationFlow}
+        userSubscription={{
+          monthlyPrice: mockSubscriptionData.monthlyPrice
+        }}
+      />
     </div>
   );
 }
