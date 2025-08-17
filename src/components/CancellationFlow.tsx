@@ -246,7 +246,7 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
           Quick one before you go.
         </h2>
 
-        <h3 className="text-xl md:text-2xl font-semibold text-gray-900 mb-6">
+        <h3 className="text-xl md:text-3xl font-semibold italic text-gray-900 mb-6">
           Have you found a job yet?
         </h3>
     
@@ -420,55 +420,60 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
   };
 
   const renderOffer = () => {
-    const originalPrice = userSubscription.monthlyPrice;
-    const discountedPrice = downsellVariant === 'B' ? getDiscountedPrice(originalPrice) : originalPrice;
-    const isDiscounted = downsellVariant === 'B';
+  const originalPrice = userSubscription.monthlyPrice;
+  const discountedPrice = downsellVariant === 'B' ? getDiscountedPrice(originalPrice) : originalPrice;
+  const isDiscounted = downsellVariant === 'B';
 
-    return (
-      <div className="flex flex-col lg:flex-row lg:items-center lg:gap-8">
-        <div className="lg:flex-1">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            We built this to help you land the job, this makes it a little easier.
-          </h2>
+  return (
+    <div className="flex flex-col lg:flex-row lg:items-center lg:gap-8">
+      <div className="lg:flex-1">
+        <h2 className="text-3xl font-bold text-gray-900 mb-4">
+          We built this to help you land the job, this makes it a little easier.
+        </h2>
+        <p className="text-gray-600 mb-8 md:text-lg">
+          We've been there and we're here to help you.
+        </p>
 
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-            <h3 className="text-lg font-semibold text-green-800 mb-2">
-              {isDiscounted ? "Here's 50% off until you find a job." : "Special offer just for you!"}
-            </h3>
-            <div className="text-2xl font-bold text-green-800">
-              {isDiscounted && (
-                <span className="text-lg line-through text-gray-500 mr-2">
-                  {formatPrice(originalPrice)}
-                </span>
-              )}
-              {formatPrice(discountedPrice)}/month
-            </div>
+        <div className="bg-purple-100 border border-purple-400 rounded-lg p-6 mb-6 flex flex-col items-center">
+          <h3 className="text-2xl font-bold text-gray-800 mb-2 text-center">
+            {isDiscounted ? "Here's 50% off until you find a job." : "Special offer just for you!"}
+          </h3>
+          <div className="text-2xl font-bold text-purple-600 mb-2 text-center">
+            {formatPrice(discountedPrice)}/month
+        
             {isDiscounted && (
-              <p className="text-sm text-green-700 mt-1">Save $12.5/month</p>
+              <span className="text-lg line-through text-gray-500 ml-2">
+                {formatPrice(originalPrice)}/month
+              </span>
             )}
+            
           </div>
-
-          <div className="space-y-3">
-            <button
-              onClick={() => handleOfferResponse(true)}
-              className="w-full py-3 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-            >
-              Yes, please
-            </button>
-            <button
-              onClick={() => handleOfferResponse(false)}
-              className="w-full py-3 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-            >
-              No, thanks
-            </button>
-          </div>
+          <button
+            onClick={() => handleOfferResponse(true)}
+            className="w-full py-3 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium mb-2"
+          >
+            Get 50% off
+          </button>
+          <p className="text-gray-600 italic md:text-sm">
+          You won't be charged until your next billing date.
+          </p>
         </div>
+
+        <div className="space-y-3">
+          <button
+            onClick={() => handleOfferResponse(false)}
+            className="w-full py-3 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+          >
+            No, thanks
+          </button>
+        </div>
+      </div>
         
         <div className="mb-6 lg:mb-0 lg:flex-1 lg:max-w-md hidden lg:block">
           <img 
             src="/empire-state-compressed.jpg" 
             alt="Empire State Building" 
-            className="w-full h-48 lg:h-90 object-cover rounded-lg"
+            className="w-full h-48 lg:h-100 object-cover rounded-lg"
           />
         </div>
       </div>
@@ -479,7 +484,7 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
     <div className="flex flex-col lg:flex-row lg:items-start lg:gap-8">
       <div className="lg:flex-1">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
             What's one thing you wish we could've helped you with?
           </h2>
           <p className="text-gray-600 mb-8 md:text-lg">
@@ -509,7 +514,7 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
         <img 
           src="/empire-state-compressed.jpg" 
           alt="Empire State Building" 
-          className="w-full h-32 lg:h-90 object-cover rounded-lg"
+          className="w-full h-32 lg:h-95 object-cover rounded-lg"
         />
       </div>
     </div>
@@ -543,7 +548,7 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
     return (
       <div className="flex flex-col lg:flex-row lg:items-start lg:gap-8">
         <div className="lg:flex-1">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
             We've helped you land the job, now let's secure the visa.
           </h2>
 
@@ -648,13 +653,13 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
       </div>
 
       <div className="lg:flex-1 lg:order-1">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+        <h2 className="text-3xl font-bold text-gray-900 mb-6">
           All done, your cancellation's been processed.
         </h2>
 
         <p className="text-gray-600 mb-8">
           We're stoked to hear you've landed a job and sorted your visa. <br/>
-          Big congrats from the team!
+          Big congrats from the team! 🙌
         </p>
 
         <button
@@ -671,7 +676,7 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
     <div className="flex flex-col lg:flex-row lg:items-start lg:gap-8">
       <div className="lg:flex-1">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">
             Your cancellation is all sorted, mate, no more charges.
           </h2>
         </div>
@@ -735,23 +740,25 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
 
         {/* Content - Second on mobile, first on larger screens */}
         <div className="lg:flex-1 lg:order-1">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
             Great choice, mate!
           </h2>
-
-          <p className="text-gray-900 mb-2">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
             You're still on the path to your dream role.
-          </p>
-          <p className="text-purple-600 font-semibold mb-6">
+          </h2>
+          <h2 className="text-3xl text-purple-600 font-semibold mb-6">
             Let's make it happen together!
-          </p>
+          </h2>
 
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-            <p className="text-sm text-green-800 mb-2">
+          <div className="mb-6">
+            <p className="text-lg text-gray-800 mb-2">
               You've got <strong>{daysLeft} days</strong> left on your current plan.
             </p>
-            <p className="text-sm text-green-800">
-              On <strong>{futureDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</strong> you'll get your 50% off.
+            <p className="text-lg text-gray-800 mb-2">
+              Starting from <strong>{futureDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</strong> you'll get your 50% off.
+            </p>
+            <p className="text-gray-500 italic text-sm">
+            You won't be charged until your next billing date.
             </p>
           </div>
 
@@ -793,8 +800,8 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
       <div className="flex flex-col lg:flex-row lg:items-start lg:gap-8">
         <div className="lg:flex-1">
           <div className="mb-6">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
-              Help us understand how you were using MigrateMate
+            <h2 className="text-3xl md:text-3xl font-bold text-gray-900 mb-4">
+              Help us understand how you were using Migrate Mate
             </h2>
           </div>
 
@@ -927,8 +934,15 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
         setFormData({ ...formData, reasonError: 'To help us understand, please pick an option' });
         return false;
       }
-      
-      if (formData.reasonDetails.length < 25) {
+
+      // Check if the reasonDetails is a valid number for the "too-expensive" reason
+      if (formData.cancellationReason === 'too-expensive') {
+        const amount = parseFloat(formData.reasonDetails); // Convert string to number
+        if (isNaN(amount) || formData.reasonDetails.trim() === '') {
+          setFormData({ ...formData, detailsError: 'Please enter a valid number' });
+          return false;
+        }
+      } else if (formData.reasonDetails.length < 25) {
         setFormData({ ...formData, detailsError: 'Please type 25 characters min' });
         return false;
       }
@@ -936,6 +950,7 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
       setFormData({ ...formData, reasonError: '', detailsError: '' });
       return true;
     };
+
 
     const handleGetDiscount = () => {
       if (validateReasonsForm()) {
@@ -953,7 +968,7 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
       <div className="flex flex-col lg:flex-row lg:items-start lg:gap-8">
         <div className="lg:flex-1">
           <div className="mb-6">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-3xl font-bold text-gray-900 mb-4">
               What's the main reason for cancelling?
             </h2>
             <p className="text-gray-600 md:text-lg">
@@ -1063,16 +1078,16 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
 
         {/* Content - Second on mobile, first on larger screens */}
         <div className="lg:flex-1 lg:order-1">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
-            Sorry to see you go mate
+          <h2 className="text-3xl md:text-3xl font-bold text-gray-900 mb-4">
+            Sorry to see you go, mate.
           </h2>
 
-          <p className="text-gray-600 mb-6 md:text-lg">
-            Thanks for being with us and you're always welcome back.
-          </p>
+          <h2 className="ttext-2xl md:text-2xl font-bold text-gray-900 mb-4">
+            Thanks for being with us, and you're always welcome back.
+          </h2>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
-            <p className="text-blue-800 font-medium">
+          <div className="mb-6">
+            <p className="text-lg text-gray-800 mb-2">
               Your subscription is set to end on{' '}
               <strong>{endDate.toLocaleDateString('en-US', {
                 month: 'long',
@@ -1080,8 +1095,11 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
                 year: 'numeric'
               })}</strong>
             </p>
-            <p className="text-blue-700 text-sm mt-1">
-              You'll still have full access until then, no more charges after that.
+            <p className="text-lg text-gray-800 mb-2">
+              You'll still have full access until then, no further charges after that.
+            </p>
+            <p className="text-gray-500 italic text-sm">
+            Changed your mind? You can always reactive anytime before your end date.
             </p>
           </div>
 
