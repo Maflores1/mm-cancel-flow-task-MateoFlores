@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
 interface CancellationFlowProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ interface CancellationFlowProps {
 type FlowStep = 
   | 'initial'
   | 'congrats-form'
+  | 'job-landed-external'
   | 'feedback-form'
   | 'visa-help'
   | 'all-done'
@@ -158,6 +160,7 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
     const progressMap: Record<FlowStep, { current: number; total: number }> = {
       'initial': { current: 1, total: 3 },
       'congrats-form': { current: 1, total: 3 },
+      'job-landed-external': { current: 2, total: 3 },
       'feedback-form': { current: 2, total: 3 },
       'visa-help': { current: 2, total: 3 },
       'all-done': { current: 3, total: 3 },
@@ -197,6 +200,7 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
 
   const handleOfferResponse = (accepted: boolean) => {
     if (accepted) {
+      saveCancellationData(); // Save when offer is accepted
       navigateToStep('offer-accepted');
     } else {
       navigateToStep('usage-questions');
@@ -227,6 +231,97 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
       navigateToStep('all-done');
     }
   };
+
+  // Fixed saveCancellationData function that handles multiple subscriptions
+const saveCancellationData = async () => {
+  try {
+    // Mock user ID for demonstration - in real app, get from auth
+    const mockUserId = userId || '550e8400-e29b-41d4-a716-446655440001';
+    
+    console.log('Starting cancellation save for user:', mockUserId);
+    console.log('Form data:', formData);
+    console.log('Downsell variant:', downsellVariant);
+    
+    // Get active subscriptions (use array instead of .single())
+    const { data: subscriptions, error: fetchError } = await supabase
+      .from('subscriptions')
+      .select('id, status, monthly_price')
+      .eq('user_id', mockUserId)
+      .eq('status', 'active');
+
+    if (fetchError) {
+      console.error('Error fetching subscriptions:', fetchError);
+      throw new Error('Could not fetch subscriptions');
+    }
+
+    if (!subscriptions || subscriptions.length === 0) {
+      throw new Error('No active subscription found for user');
+    }
+
+    // Use the first active subscription
+    const subscription = subscriptions[0];
+    console.log('Found subscription:', subscription);
+    
+    if (subscriptions.length > 1) {
+      console.warn(`Multiple active subscriptions found for user ${mockUserId}. Using first one:`, subscription);
+    }
+
+    // Update subscription status to pending_cancellation
+    const { error: subscriptionError } = await supabase
+      .from('subscriptions')
+      .update({ 
+        status: 'pending_cancellation',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', subscription.id);
+
+    if (subscriptionError) {
+      console.error('Error updating subscription:', subscriptionError);
+      throw new Error('Failed to update subscription status');
+    } else {
+      console.log('Subscription updated successfully');
+    }
+
+    // Prepare cancellation data - only include fields that have values
+    const cancellationData: any = {
+      user_id: mockUserId,
+      subscription_id: subscription.id,
+      downsell_variant: downsellVariant,
+      accepted_downsell: currentStep === 'offer-accepted'
+    };
+
+    // Only include form fields that have been filled out
+    if (formData.foundJob !== null) cancellationData.found_job = formData.foundJob;
+    if (formData.usedMigrateMate !== null) cancellationData.used_migratemate = formData.usedMigrateMate;
+    if (formData.rolesApplied) cancellationData.roles_applied = formData.rolesApplied;
+    if (formData.companiesEmailed) cancellationData.companies_emailed = formData.companiesEmailed;
+    if (formData.companiesInterviewed) cancellationData.companies_interviewed = formData.companiesInterviewed;
+    if (formData.feedback) cancellationData.feedback = formData.feedback;
+    if (formData.visaHelp !== null) cancellationData.visa_help = formData.visaHelp;
+    if (formData.visaType) cancellationData.visa_type = formData.visaType;
+    if (formData.cancellationReason) cancellationData.cancellation_reason = formData.cancellationReason;
+    if (formData.reasonDetails) cancellationData.reason_details = formData.reasonDetails;
+
+    console.log('Inserting cancellation data:', cancellationData);
+
+    const { data: insertedData, error: cancellationError } = await supabase
+      .from('cancellations')
+      .insert(cancellationData)
+      .select();
+
+    if (cancellationError) {
+      console.error('Error saving cancellation:', cancellationError);
+      console.error('Cancellation error details:', JSON.stringify(cancellationError, null, 2));
+      throw new Error('Failed to save cancellation data');
+    } else {
+      console.log('Cancellation data saved successfully:', insertedData);
+      return insertedData;
+    }
+  } catch (error) {
+    console.error('Error in saveCancellationData:', error);
+    throw error;
+  }
+};
 
   // Render functions
   const renderInitialStep = () => (
@@ -285,9 +380,9 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
 
     const handleContinue = () => {
       if (validateCongratsForm()) {
-        navigateToStep('feedback-form');
-      }
-    };
+        navigateToStep('feedback-form'); // Both yes and no go to feedback first
+  }
+};
 
     return (
       <div className="flex flex-col lg:flex-row lg:items-start lg:gap-8">
@@ -480,7 +575,27 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
     );
   };
 
-  const renderFeedbackForm = () => (
+const renderFeedbackForm = () => {
+  const validateFeedbackForm = () => {
+    if (formData.feedback.length < 25) {
+      setFormData({ ...formData, congratsError: 'Please type 25 characters minimum' });
+      return false;
+    }
+    setFormData({ ...formData, congratsError: '' });
+    return true;
+  };
+
+  const handleContinue = () => {
+  if (validateFeedbackForm()) {
+    if (formData.usedMigrateMate === true) {
+      navigateToStep('visa-help');
+    } else {
+      navigateToStep('job-landed-external'); // Go to external job page for "no" users
+    }
+  }
+};
+
+  return (
     <div className="flex flex-col lg:flex-row lg:items-start lg:gap-8">
       <div className="lg:flex-1">
         <div className="mb-6">
@@ -495,14 +610,24 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
         <div className="space-y-4">
           <textarea
             value={formData.feedback}
-            onChange={(e) => setFormData({ ...formData, feedback: e.target.value })}
-            // Added text-black to the textarea's className
+            onChange={(e) => setFormData({ ...formData, feedback: e.target.value, congratsError: '' })}
             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent h-32 resize-none text-black"
             placeholder="Your feedback helps us improve..."
           />
+          
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-gray-500">
+              {formData.feedback.length}/25 minimum characters
+            </span>
+            {formData.congratsError && (
+              <span className="text-red-600 text-xs font-medium">
+                {formData.congratsError}
+              </span>
+            )}
+          </div>
 
           <button
-            onClick={() => navigateToStep('visa-help')}
+            onClick={handleContinue}
             className="w-full py-3 px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
           >
             Continue
@@ -519,6 +644,134 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
       </div>
     </div>
   );
+};
+
+  const renderJobLandedExternal = () => {
+  const validateVisaForm = () => {
+    if (formData.visaHelp === null) {
+      setFormData({ ...formData, visaError: 'Please select an option' });
+      return false;
+    }
+    if (formData.visaType.trim() === '') {
+      setFormData({ ...formData, visaError: 'Please specify the visa type' });
+      return false;
+    }
+    setFormData({ ...formData, visaError: '' });
+    return true;
+  };
+
+  const handleContinue = () => {
+    if (validateVisaForm()) {
+      if (formData.visaHelp) {
+        navigateToStep('all-done');
+      } else {
+        navigateToStep('founder-message');
+      }
+    }
+  };
+
+  return (
+    <div className="flex flex-col lg:flex-row lg:items-start lg:gap-8">
+      <div className="lg:flex-1">
+        <h2 className="text-3xl font-bold text-gray-900 mb-4">
+          You landed the job!
+        </h2>
+        <h2 className="text-3xl font-bold italic text-gray-900 mb-4">
+          That's what we live for.
+        </h2>
+        
+        <h3 className="text-2xl font-semibold text-gray-900 mb-6">
+          Even if it wasn't through Migrate Mate, <br/> let us help get your visa sorted.
+        </h3>
+
+        <p className="text-gray-800 mb-6 md:text-lg">
+          Is your company providing an immigration lawyer to help you with your visa?
+        </p>
+
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={() => setFormData({ ...formData, visaHelp: true, visaError: '' })}
+              className={`py-3 md:py-4 px-4 rounded-lg font-medium transition-colors text-base md:text-lg ${
+                formData.visaHelp === true
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Yes
+            </button>
+            <button
+              onClick={() => setFormData({ ...formData, visaHelp: false, visaError: '' })}
+              className={`py-3 md:py-4 px-4 rounded-lg font-medium transition-colors text-base md:text-lg ${
+                formData.visaHelp === false
+                  ? 'bg-gray-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              No
+            </button>
+          </div>
+
+          {formData.visaHelp === true && (
+            <div>
+              <label className="block text-sm md:text-base font-medium text-gray-700 mb-3">
+                What type of visa are you applying for? *
+              </label>
+              <input
+                type="text"
+                value={formData.visaType}
+                onChange={(e) => setFormData({ ...formData, visaType: e.target.value, visaError: '' })}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
+                placeholder="e.g., H-1B, O-1, E-3, TN, L-1..."
+              />
+            </div>
+          )}
+
+          {formData.visaHelp === false && (
+            <div>
+              <p className="text-gray-600 mb-3">
+                We can connect you with one of our trusted partners.
+              </p>
+              <label className="block text-sm md:text-base font-medium text-gray-700 mb-3">
+                What type of visa would you like to apply for? *
+              </label>
+              <input
+                type="text"
+                value={formData.visaType}
+                onChange={(e) => setFormData({ ...formData, visaType: e.target.value, visaError: '' })}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-black"
+                placeholder="e.g., H-1B, O-1, E-3, TN, L-1..."
+              />
+            </div>
+          )}
+
+          {formData.visaError && (
+            <div className="text-red-600 text-sm font-medium">
+              {formData.visaError}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <button
+              onClick={handleContinue}
+              className="w-full py-3 px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+            >
+              Complete Cancellation
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div className="mb-6 lg:mb-0 lg:flex-1 lg:max-w-md hidden lg:block">
+        <img 
+          src="/empire-state-compressed.jpg" 
+          alt="Empire State Building" 
+          className="w-full h-48 lg:h-90 object-cover rounded-lg"
+        />
+      </div>
+    </div>
+  );
+};
 
 
   const renderVisaHelp = () => {
@@ -552,9 +805,9 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
             We've helped you land the job, now let's secure the visa.
           </h2>
 
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">
+          <p className="text-gray-800 mb-6 md:text-lg">
             Is your company providing an immigration lawyer to help you with your visa?
-          </h3>
+          </p>
 
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
@@ -663,7 +916,10 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
         </p>
 
         <button
-          onClick={onClose}
+          onClick={() => {
+            saveCancellationData();
+            onClose();
+          }}
           className="w-full py-3 px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
         >
           Finish
@@ -704,7 +960,10 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
         </div>
 
         <button
-          onClick={onClose}
+          onClick={() => {
+            saveCancellationData();
+            onClose();
+          }}
           className="w-full py-3 px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
         >
           Finish
@@ -979,27 +1238,42 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
           <div className="space-y-6">
             <div>
               <div className="space-y-3">
-                {reasonOptions.map((option) => (
+                {formData.cancellationReason ? (
+                  // Show only selected option when one is chosen
                   <button
-                    key={option.value}
                     onClick={() => {
                       setFormData({ 
                         ...formData, 
-                        cancellationReason: option.value, 
+                        cancellationReason: '', 
                         reasonDetails: '',
                         reasonError: '',
                         detailsError: '' 
                       });
                     }}
-                    className={`w-full py-3 px-4 rounded-lg font-medium transition-colors text-left ${
-                      formData.cancellationReason === option.value
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
+                    className="w-full py-3 px-4 rounded-lg font-medium transition-colors text-left bg-purple-600 text-white"
                   >
-                    {option.label}
+                    {reasonOptions.find(option => option.value === formData.cancellationReason)?.label}
                   </button>
-                ))}
+                ) : (
+                  // Show all options when none is selected
+                  reasonOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setFormData({ 
+                          ...formData, 
+                          cancellationReason: option.value, 
+                          reasonDetails: '',
+                          reasonError: '',
+                          detailsError: '' 
+                        });
+                      }}
+                      className="w-full py-3 px-4 rounded-lg font-medium transition-colors text-left bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    >
+                      {option.label}
+                    </button>
+                  ))
+                )}
               </div>
               
               {formData.reasonError && (
@@ -1104,7 +1378,10 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
           </div>
 
           <button
-            onClick={onClose}
+            onClick={() => {
+              saveCancellationData();
+              onClose();
+            }}
             className="w-full py-3 md:py-4 px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-base md:text-lg"
           >
             Finish
@@ -1116,33 +1393,35 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
 
 
   const renderCurrentStep = () => {
-    switch (currentStep) {
-      case 'initial':
-        return renderInitialStep();
-      case 'congrats-form':
-        return renderCongratsForm();
-      case 'feedback-form':
-        return renderFeedbackForm();
-      case 'visa-help':
-        return renderVisaHelp();
-      case 'all-done':
-        return renderAllDone();
-      case 'founder-message':
-        return renderFounderMessage();
-      case 'offer':
-        return renderOffer();
-      case 'offer-accepted':
-        return renderOfferAccepted();
-      case 'usage-questions':
-        return renderUsageQuestions();
-      case 'detailed-reasons':
-        return renderDetailedReasons();
-      case 'sorry-to-go':
-        return renderSorryToGo();
-      default:
-        return renderInitialStep();
-    }
-  };
+  switch (currentStep) {
+    case 'initial':
+      return renderInitialStep();
+    case 'congrats-form':
+      return renderCongratsForm();
+    case 'job-landed-external': // ADD THIS CASE
+      return renderJobLandedExternal();
+    case 'feedback-form':
+      return renderFeedbackForm();
+    case 'visa-help':
+      return renderVisaHelp();
+    case 'all-done':
+      return renderAllDone();
+    case 'founder-message':
+      return renderFounderMessage();
+    case 'offer':
+      return renderOffer();
+    case 'offer-accepted':
+      return renderOfferAccepted();
+    case 'usage-questions':
+      return renderUsageQuestions();
+    case 'detailed-reasons':
+      return renderDetailedReasons();
+    case 'sorry-to-go':
+      return renderSorryToGo();
+    default:
+      return renderInitialStep();
+  }
+};
 
   if (!isOpen) return null;
 
@@ -1168,19 +1447,21 @@ export default function CancellationFlow({ isOpen, onClose, userSubscription, us
           {/* Title and Progress */}
           <div className="flex items-center space-x-4">
             <h1 className="text-sm md:text-base font-medium text-gray-500">Subscription Cancellation</h1>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-500">Step {progress.current} of {progress.total}</span>
-              <div className="flex space-x-1">
-                {Array.from({ length: progress.total }, (_, i) => (
-                  <div
-                    key={i}
-                    className={`w-2 h-2 rounded-full ${
-                      i < progress.current ? 'bg-purple-600' : 'bg-gray-300'
-                    }`}
-                  />
-                ))}
+            {currentStep !== 'initial' && (
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-500">Step {progress.current} of {progress.total}</span>
+                <div className="flex space-x-1">
+                  {Array.from({ length: progress.total }, (_, i) => (
+                    <div
+                      key={i}
+                      className={`w-2 h-2 rounded-full ${
+                        i < progress.current ? 'bg-purple-600' : 'bg-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Close Button */}
